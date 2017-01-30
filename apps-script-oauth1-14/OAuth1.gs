@@ -805,7 +805,8 @@ Service_.prototype.getCallbackUrl = function() {
   * @return {Object} Parameter string data
   */
   OAuth.prototype.getParameterString = function(request, oauth_data) {
-    var base_string_data = this.sortObject(this.percentEncodeData(this.mergeObject(oauth_data, this.mergeObject(request.data, this.deParamUrl(request.url)))));
+    // Clones oauth_data to prevent modifying the original value. (request.data also should be taken care of?)
+    var base_string_data = this.sortObject(this.percentEncodeData(this.mergeObject(this.mergeObject({}, oauth_data), this.mergeObject(request.data, this.deParamUrl(request.url)))));
 
     var data_str = '';
 
