@@ -1,85 +1,72 @@
 'use strict';
 
-var SERVICE_NAME = 'Withings';
-
-/**
- * Authorizes and makes a request to the Withings API.
- */
-function run() {
-  var service = getWithingsService();
-  if (!service.hasAccess()) {
-    showSidebar();
-    return;
+var WithingsWebService = function(key, secret, authCallback) {
+  if (!key || !secret || !authCallback) {
+    throw new TypeError('Invalid arguments');
+  }
+  if (!(this instanceof WithingsWebService)) {
+    throw new TypeError('WithingsWebService is a constructor');
   }
 
-  var userid = PropertiesService.getScriptProperties().getProperty('userid');
-  var url = 'https://wbsapi.withings.net/measure?action=getmeas&userid=' + userid;
-  var response = service.fetch(url);
-  var result = JSON.parse(response.getContentText());
+  var consumerKey = key;
+  var consumerSecret = secret;
+  var authCallbackName = (typeof authCallback === 'function') ? authCallback.name : authCallback;
 
-  Logger.log(result);
-}
-
-/**
- * Reset the authorization state, so that it can be re-tested.
- */
-function reset() {
-  var service = getWithingsService();
-  service.reset();
-}
-
-/**
- * Configures the service.
- */
-function getWithingsService() {
-  var scriptProperties = PropertiesService.getScriptProperties();
-  return OAuth1.createService(SERVICE_NAME)
+  /**
+   * Configures the service.
+   */
+  this.getService = function() {
+    var scriptProperties = PropertiesService.getScriptProperties();
+    return OAuth1.createService('Withings')
     .setAccessTokenUrl('https://oauth.withings.com/account/access_token')
     .setRequestTokenUrl('https://oauth.withings.com/account/request_token')
     .setAuthorizationUrl('https://oauth.withings.com/account/authorize')
-    .setConsumerKey(scriptProperties.getProperty('withingConsumerKey'))
-    .setConsumerSecret(scriptProperties.getProperty('withingConsumerSecret'))
+    .setConsumerKey(consumerKey)
+    .setConsumerSecret(consumerSecret)
     .setParamLocation('uri-query')
     .setOAuthVersion('1.0')
-    .setCallbackFunction('authCallback')
+    .setCallbackFunction(authCallbackName)
     .setPropertyStore(scriptProperties);
-}
+  };
 
-/**
- * Logs the callback URL to register.
- */
-function logCallbackUrl() {
-  var service = getWithingsService();
-  Logger.log(service.getCallbackUrl());
-}
+  /**
+   * Handles the OAuth callback.
+   */
+  this.authCallback = function(request) {
+    var service = this.getService();
+    var isAuthorized = service.handleCallback(request);
+    if (isAuthorized) {
+      return HtmlService.createHtmlOutput('Success! You can close this tab.');
+    } else {
+      return HtmlService.createHtmlOutput('Denied. You can close this tab');
+    }
+  };
 
-/**
- * Shows the sidebar to display the authorization URL.
- */
-function showSidebar() {
-  var service = getWithingsService();
-  if (!service.hasAccess()) {
-    var authorizationUrl = service.authorize();
-    var template = HtmlService.createTemplate(
-        '<a href="<?= authorizationUrl ?>" target="_blank">Authorize</a>. ' +
-        'Reopen the sidebar when the authorization is complete.');
-    template.authorizationUrl = authorizationUrl;
-    var page = template.evaluate();
-    SpreadsheetApp.getUi().showSidebar(page);
-  } else {
-    SpreadsheetApp.getUi().showSidebar(HtmlService.createHtmlOutput('Already authorized.'));
-  }
-}
+  /**
+   * Reset the authorization state, so that it can be re-tested.
+   */
+  this.reset = function() {
+    var service = this.getService();
+    service.reset();
+  };
 
-/**
- * Handles the OAuth callback.
- */
-function authCallback(request) {
-  var service = getWithingsService();
-  var isAuthorized = service.handleCallback(request);
-  if (isAuthorized) {
-    return HtmlService.createHtmlOutput('Success! You can close this tab.');
-  } else {
-    return HtmlService.createHtmlOutput('Denied. You can close this tab');
-  }
-}
+  /**
+   * Logs the callback URL to register.
+   */
+  this.logCallbackUrl = function() {
+    var service = this.getService();
+    Logger.log(service.getCallbackUrl());
+  };
+
+  /**
+   * Logs the authorization URL.
+   */
+  this.logAuthorizationUrl = function() {
+    var service = this.getService();
+    if (!service.hasAccess()) {
+      Logger.log('Open the following URL and re-run the script: %s', service.authorize());
+    } else {
+      Logger.log('Already authorized.');
+    }
+  };
+};
