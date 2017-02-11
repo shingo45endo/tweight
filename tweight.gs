@@ -125,6 +125,33 @@ function updateSheet(sheet, items) {
   }
 }
 
+function readDataFromSheet(sheet) {
+  var items = [];
+  if (!sheet) {
+    Logger.log('Invalid argument(s)');
+    return items;
+  }
+
+  var rowNum = sheet.getLastRow();
+  var colNum = sheet.getLastColumn();
+
+  var cells = sheet.getRange(1, 1, rowNum, colNum).getValues();
+  var headers = cells.shift();
+  cells.shift();  // for the label row
+
+  cells.forEach(function(cell) {
+    var item = cell.reduce(function(obj, elem, i) {
+      if (headers[i] && elem) {
+        obj[headers[i]] = elem;
+      }
+      return obj;
+    }, {});
+    items.push(item);
+  });
+
+  return items;
+}
+
 function convertWithingsData(data) {
   var items = [];
   if (!data || (data.status && data.status !== 0) || !data.body || !data.body.measuregrps) {
