@@ -226,3 +226,73 @@ function triggerStoringDataFromWithingsApi() {
   var items = convertWithingsData(result);
   updateSheet(getSheet(), items);
 }
+
+function makeChart(items, day) {
+  if (!items) {
+    return null;
+  }
+  day = day || 7;
+
+  // Decides the time span of the chart.
+  var latest = Math.max.apply(null, items.map(function(item) {return item.date || 0;}));
+  var end = Math.ceil((latest + 1) / (60 * 60)) * 60 * 60;
+  var begin = end - day * 24 * 60 * 60;
+
+  // Initializes the cells.
+  var rows = new Array(24 * day);
+  for (var i = 0; i < rows.length; i++) {
+    rows[i] = [new Date((begin + i * 60 * 60) * 1000), null];
+  }
+
+  // Inserts the data into the cells.
+  items.forEach(function(item) {
+    if (item.date < begin) {
+      return;
+    }
+    var index = Math.floor((item.date - begin) / (60 * 60));
+    rows[index] = [new Date(item.date * 1000), item[1]];
+  });
+
+  // Adjusts the timezone of the Date objects.
+  // Charts class seems to display Date values in PST. So, needs to adjust the values only for display.
+  // '-8 * 60 * 60' means the time difference between PST and UTC.
+  // 'getTimezoneOffset() * 60' means the time difference between UTC and the local time.
+  // TODO: Support the summer time.
+  var offset = -8 * 60 * 60 + (new Date()).getTimezoneOffset() * 60;
+  rows.forEach(function(row) {row[0].setTime(row[0].getTime() - offset * 1000);});
+
+  // Makes a DataTable from the cells.
+  var data = Charts.newDataTable()
+  .addColumn(Charts.ColumnType.DATE, 'Date')
+  .addColumn(Charts.ColumnType.NUMBER, measurements[1]);
+  rows.forEach(function(row) {data.addRow(row);});
+  data.build();
+
+  // Makes parameters for LineChart.
+  var maxValue = Math.ceil(Math.max.apply(null, rows.map(function(row) {return row[1] || 0;})) + 0.1);
+  var minValue = Math.floor(Math.min.apply(null, rows.map(function(row) {return row[1] || 1000;})) - 0.1);
+  var ticks = [];
+  for (var v = minValue; v <= maxValue; v += 0.5) { // 'step' should be a precise value in binary representation. (ex. 1, 0.5, 0.25, ...)
+    ticks.push(v);
+  }
+
+  // Makes a chart from the DataTable.
+  var chart = Charts.newLineChart()
+  .setDataTable(data)
+  .setDimensions(512, 256)
+  .setCurveStyle(Charts.CurveStyle.SMOOTH)
+  .setPointStyle(Charts.PointStyle.MEDIUM)
+  .setLegendPosition(Charts.Position.NONE)
+  .setOption('interpolateNulls', true)
+  .setOption('hAxis', {format: 'M/d'})
+  .setOption('vAxis', {
+    maxValue: maxValue,
+    minValue: minValue,
+    ticks: ticks,
+    textPosition: 'none',
+  })
+  .setOption('chartArea', {width: '90%', height: '82.5%'})
+  .build();
+
+  return chart;
+}
