@@ -16,7 +16,6 @@ var WithingsWebService = function(key, secret, authCallback) {
    * Configures the service.
    */
   this.getService = function() {
-    var scriptProperties = PropertiesService.getScriptProperties();
     return OAuth1.createService('Withings')
     .setAccessTokenUrl('https://oauth.withings.com/account/access_token')
     .setRequestTokenUrl('https://oauth.withings.com/account/request_token')
@@ -26,7 +25,7 @@ var WithingsWebService = function(key, secret, authCallback) {
     .setParamLocation('uri-query')
     .setOAuthVersion('1.0')
     .setCallbackFunction(authCallbackName)
-    .setPropertyStore(scriptProperties);
+    .setPropertyStore(PropertiesService.getScriptProperties());
   };
 
   /**
