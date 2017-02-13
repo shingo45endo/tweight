@@ -1,6 +1,6 @@
 'use strict';
 
-var WithingsWebService = function(key, secret, authCallback) {
+function WithingsWebService(key, secret, authCallback) {
   if (!key || !secret || !authCallback) {
     throw new TypeError('Invalid arguments');
   }
@@ -68,4 +68,4 @@ var WithingsWebService = function(key, secret, authCallback) {
       Logger.log('Already authorized.');
     }
   };
-};
+}
