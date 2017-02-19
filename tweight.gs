@@ -296,3 +296,60 @@ function makeChart(items, day) {
 
   return chart;
 }
+
+function makeText(items) {
+  if (!items) {
+    return null;
+  }
+
+  // Picks up 2 items for diff.
+  var dates = items.map(function(item) {return item.date || 0;});
+  var latest = Math.max.apply(null, dates);
+  var prev = dates.reduce(function(nearest, current) {
+    if (current === latest) {
+      return nearest;
+    }
+    var diffN = Math.abs(24 * 60 * 60 - Math.abs(latest - nearest));
+    var diffC = Math.abs(24 * 60 * 60 - Math.abs(latest - current));
+    return (diffC < diffN) ? current : nearest;
+  }, 0);
+  var latestIndex = dates.indexOf(latest);
+  var prevIndex = dates.indexOf(prev);
+
+  // Begins making a text.
+  var text = '';
+
+  // Adds changes in weight.
+  var diffWeight = items[latestIndex]['1'] - items[prevIndex]['1']; // '1' means 'Weight (kg)'. 
+  if (diffWeight > 0) {
+    text += Utilities.formatString('\ud83d\udcc8 %+.1fkg ⤴', diffWeight);
+  } else if (diffWeight < 0) {
+    text += Utilities.formatString('\ud83d\udcc9 %+.1fkg ⤵', diffWeight);
+  } else {
+    text += '\ud83d\udcca ±0.0kg ➡';
+  }
+  text += '\n';
+
+  // Adds the period of time.
+  var clocks = ['\ud83d\udd5b', '\ud83d\udd67', '\ud83d\udd50', '\ud83d\udd5c', '\ud83d\udd51', '\ud83d\udd5d', '\ud83d\udd52', '\ud83d\udd5e', '\ud83d\udd53', '\ud83d\udd5f', '\ud83d\udd54', '\ud83d\udd60', '\ud83d\udd55', '\ud83d\udd61', '\ud83d\udd56', '\ud83d\udd62', '\ud83d\udd57', '\ud83d\udd63', '\ud83d\udd58', '\ud83d\udd64', '\ud83d\udd59', '\ud83d\udd65', '\ud83d\udd5a', '\ud83d\udd66'];
+  var offset = (new Date()).getTimezoneOffset() * 60;
+  var objs = [latest, prev].map(function(timestamp) {
+    var date = new Date((timestamp - offset) * 1000);
+    return {
+      date: date,
+      datestr: Utilities.formatDate(date, 'GMT', 'MMM. d, h a'),
+      clock: clocks[Math.floor((date.getUTCHours() * 60 + date.getUTCMinutes()) / 30) % clocks.length]
+    };
+  });
+  var diffHour = Math.round((objs[0].date.getTime() - objs[1].date.getTime()) / (1000 * 60 * 60));
+  text += Utilities.formatString('%s %s ←(%dh)← %s %s', objs[0].clock, objs[0].datestr, diffHour, objs[1].clock, objs[1].datestr);
+  text += '\n';
+
+  // Adds a hashtag.
+  text += '#tweight';
+
+  // Trims the text within 140 chars. (Very easy way)
+  text = text.slice(0, 140);
+
+  return text;
+}
