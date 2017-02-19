@@ -191,9 +191,9 @@ function convertWithingsData(data) {
 var withings = new WithingsWebService(
   PropertiesService.getScriptProperties().getProperty('withingsConsumerKey'),
   PropertiesService.getScriptProperties().getProperty('withingsConsumerSecret'),
-  authCallback);
+  withingsAuthCallback);
 
-function authCallback(request) {
+function withingsAuthCallback(request) {
   return withings.authCallback(request);
 }
 
@@ -352,4 +352,44 @@ function makeText(items) {
   text = text.slice(0, 140);
 
   return text;
+}
+
+var twitter = new TwitterWebService(
+  PropertiesService.getScriptProperties().getProperty('twitterConsumerKey'),
+  PropertiesService.getScriptProperties().getProperty('twitterConsumerSecret'),
+  twitterAuthCallback);
+
+function twitterAuthCallback(request) {
+  return twitter.authCallback(request);
+}
+
+function triggerTweeting() {
+  // Creates the OAuth1 service for Twitter API.
+  var service = twitter.getService();
+  if (!service.hasAccess()) {
+    Logger.log('Needs to authorize.');
+    twitter.logAuthorizationUrl();
+    twitter.logCallbackUrl();
+    return;
+  }
+
+  // Gets historical data from the sheet.
+  var items = readDataFromSheet(getSheet());
+
+  // If there's not new measurement data within 24 hours, skip this tweet.
+  var latest = Math.max.apply(null, items.map(function(item) {return item.date || 0;}));
+  if (Date.now() - (new Date(latest * 1000)).getTime() > 24 * 60 * 60 * 1000) {
+    Logger.log();
+    return;
+  }
+
+  // Tweets the latest change of weight.
+  var chart = makeChart(items, 7);
+  var text = makeText(items);
+  twitter.tweetWithMedia(text, chart.getAs('image/png'));
+}
+
+function triggerStoringAndTweeting() {
+  triggerStoringDataFromWithingsApi();
+  triggerTweeting();
 }
