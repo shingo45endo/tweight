@@ -1,5 +1,6 @@
 'use strict';
 
+// Constants
 var HEADER_ROW = 1;
 var LABEL_ROW  = 2;
 var DATA_ROW   = 3;
@@ -25,6 +26,11 @@ var measurements = {
   91: 'Pulse Wave Velocity',
 };
 
+/**
+ * Returns a text label for header.
+ * @param {number|string} numstr - A kind of body measurements as a number (1..91) / A property name as a string
+ * @return {string} A text label.
+ */
 function WITHINGSLABEL(numstr) {
   if (!measurements[numstr]) {
     return numstr.charAt(0).toUpperCase() + numstr.slice(1);
@@ -33,6 +39,11 @@ function WITHINGSLABEL(numstr) {
   }
 }
 
+/**
+ * Gets the sheet that contains the body measurements.
+ * If the sheet doesn't exist, creates a new sheet and returns it.
+ * @return {Sheet} The sheet that contains the body measurements.
+ */
 function getSheet() {
   var SHEET_NAME = 'Body Measures';
   var id = SpreadsheetApp.getActiveSpreadsheet().getId();
@@ -47,6 +58,10 @@ function getSheet() {
   return sheet;
 }
 
+/**
+ * Initializes a sheet for storing body measurements.
+ * @param {Sheet} sheet - A sheet.
+ */
 function initializeSheet(sheet) {
   if (!sheet) {
     Logger.log('Invalid argument(s)');
@@ -62,6 +77,11 @@ function initializeSheet(sheet) {
   sheet.hideColumns(HEADER_COL);
 }
 
+/**
+ * Gets the header labels as an array.
+ * @param {Sheet} sheet - The sheet that contains the body measurements.
+ * @return {Array<string>} The header labels as an array.
+ */
 function getCurrentHeaders(sheet) {
   if (!sheet) {
     Logger.log('Invalid argument(s)');
@@ -77,6 +97,11 @@ function getCurrentHeaders(sheet) {
   return sheet.getRange(HEADER_ROW, 1, 1, colNum).getValues()[0].map(function(elem) {return String(elem);});
 }
 
+/**
+ * Updates a sheet with new measurement data.
+ * @param {Sheet} sheet - A sheet that contains the body measurements.
+ * @param {Array<Object>} items - An array of new measurement data.
+ */
 function updateSheet(sheet, items) {
   if (!sheet || !items) {
     Logger.log('Invalid argument(s)');
@@ -125,6 +150,11 @@ function updateSheet(sheet, items) {
   }
 }
 
+/**
+ * Reads the measurement data from a sheet.
+ * @param {Sheet} sheet - A sheet that contains the body measurements.
+ * @return {Array<Object>} An array of measurement data.
+ */
 function readDataFromSheet(sheet) {
   var items = [];
   if (!sheet) {
@@ -152,6 +182,11 @@ function readDataFromSheet(sheet) {
   return items;
 }
 
+/**
+ * Convert a data from Withings API to an array for storing to sheets.
+ * @param {Object} data - A JSON data from Withings API.
+ * @return {Array<Object>} An array of measurement data.
+ */
 function convertWithingsData(data) {
   var items = [];
   if (!data || (data.status && data.status !== 0) || !data.body || !data.body.measuregrps) {
@@ -193,10 +228,18 @@ var withings = new WithingsWebService(
   PropertiesService.getScriptProperties().getProperty('withingsConsumerSecret'),
   withingsAuthCallback);
 
+/**
+ * Handles OAuth callback for Withings API.
+ * @param {Object} request - The request data recieved from the callback function.
+ */
 function withingsAuthCallback(request) {
   return withings.authCallback(request);
 }
 
+/**
+ * Triggers to get and store data with Withings API.
+ * (This function is assumed to be called by Time-driven triggers.)
+ */
 function triggerStoringDataFromWithingsApi() {
   // Creates the OAuth1 service for Withings API.
   var service = withings.getService();
@@ -227,6 +270,12 @@ function triggerStoringDataFromWithingsApi() {
   updateSheet(getSheet(), items);
 }
 
+/**
+ * Makes a chart.
+ * @param {Array<Object>} items - An array of measurement data.
+ * @param {number} day - Number of days as a period of chart.
+ * @return {Chart} A generated line chart.
+ */
 function makeChart(items, day) {
   if (!items) {
     return null;
@@ -297,6 +346,11 @@ function makeChart(items, day) {
   return chart;
 }
 
+/**
+ * Makes a text for tweet.
+ * @param {Array<Object>} items - An array of measurement data.
+ * @return {string} A text for tweet.
+ */
 function makeText(items) {
   if (!items) {
     return null;
@@ -359,10 +413,18 @@ var twitter = new TwitterWebService(
   PropertiesService.getScriptProperties().getProperty('twitterConsumerSecret'),
   twitterAuthCallback);
 
+/**
+ * Handles OAuth callback for Twitter API.
+ * @param {Object} request - The request data recieved from the callback function.
+ */
 function twitterAuthCallback(request) {
   return twitter.authCallback(request);
 }
 
+/**
+ * Triggers to tweet a text with a chart.
+ * (This function is assumed to be called by Time-driven triggers.)
+ */
 function triggerTweeting() {
   // Creates the OAuth1 service for Twitter API.
   var service = twitter.getService();
@@ -389,6 +451,10 @@ function triggerTweeting() {
   twitter.tweetWithMedia(text, chart.getAs('image/png'));
 }
 
+/**
+ * Triggers to store data and tweet.
+ * (This function is assumed to be called by Time-driven triggers.)
+ */
 function triggerStoringAndTweeting() {
   triggerStoringDataFromWithingsApi();
   triggerTweeting();
