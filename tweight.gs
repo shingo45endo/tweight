@@ -441,7 +441,7 @@ function triggerTweeting() {
   // If there's not new measurement data within 24 hours, skip this tweet.
   var latest = Math.max.apply(null, items.map(function(item) {return item.date || 0;}));
   if (Date.now() - (new Date(latest * 1000)).getTime() > 24 * 60 * 60 * 1000) {
-    Logger.log();
+    Logger.log('There\'s no data to tweet.');
     return;
   }
 
